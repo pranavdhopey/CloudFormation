@@ -1,0 +1,104 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: "Test Cloud Formation"
+
+Parameters:
+  MyKeyName:
+    Description: Select The Key Name From The List.
+    Type: 'AWS::EC2::KeyPair::KeyName'
+
+  MyInstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      
+  MyAvailabilityZone:
+    Description: Select the Availability Zone from the List
+    Type: String
+    Default: ap-south-1a
+    AllowedValues:
+      - ap-south-1a
+      - ap-south-1b
+      - ap-south-1c    
+      
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.192.0.0/16
+    
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for Public Subnet 1
+    Type: String
+    Default: 10.192.1.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for Private Subnet 1
+    Type: String
+    Default: 10.192.11.0/24	  
+
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://cfstack-pranav.s3.ap-south-1.amazonaws.com/Nested+Stack-VPC.yml 
+      Parameters:  
+        VpcCIDR: !Ref VpcCIDR
+        PublicSubnet1CIDR: !Ref PublicSubnet1CIDR 
+        PrivateSubnet1CIDR: !Ref PrivateSubnet1CIDR
+        EnvironmentName: !Ref EnvironmentName
+      TimeoutInMinutes: 5
+      
+  SGStack:
+    Type: AWS::CloudFormation::Stack 
+    Properties:
+      TemplateURL: https://cfstack-pranav.s3.ap-south-1.amazonaws.com/Nested+Stack-SG.yml 
+      Parameters:  
+        VPCId:: !GetAtt VPCStack.Outputs.MyVPCId
+      TimeoutInMinutes: 5     
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: ap-south-1a
+      ImageId: ami-09052aa9bc337c78d
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyKeyName
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: 0
+          SubnetId: !GetAtt VPCStack.Outputs.PublicSubnet1Id
+          GroupSet:
+            - !GetAtt SGStack.Outputs.DevSGGroupId
+      Tags: 
+        - Key: "Name"
+          Value: "CFInstance"
+      Tenancy: default
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          sudo yum update -y
+          sudo yum -y erase java-1.7.0-openjdk.x86_64
+          sudo yum -y install java-1.8.0-openjdk.x86_64
+          sudo yum -y install java-1.8.0-openjdk-devel
+          sudo yum -y install tomcat8
+          service tomcat8 start
+          chkconfig tomcat8 on
+          mkdir /usr/share/tomcat8/webapps/ROOT
+          touch /usr/share/tomcat8/webapps/ROOT/index.html
+          echo "Cloud Formation Tomcat8" > /usr/share/tomcat8/webapps/ROOT/index.html
+
+Outputs:
+  AppURL:
+    Description: Application URL to access
+    Value: !Sub 'http://${MyEC2Instance.PublicIp}:8080/index.html'

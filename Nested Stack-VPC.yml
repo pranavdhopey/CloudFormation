@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VPC Nested Stack: VPC with two Subnets(Public and Private), Public Route Table with Route to Internet and IGW'
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.192.0.0/16
+    
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for Public Subnet 1
+    Type: String
+    Default: 10.192.1.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for Private Subnet 1
+    Type: String
+    Default: 10.192.11.0/24
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroup:
+      - Label:
+          default: Dev VPC Network Configuration
+          Parameters:
+            - VpcCIDR
+            - PublicSubnet1CIDR
+            - PrivateSubnet1CIDR
+    ParameterLabels:
+      VpcCIDR:
+        default: VPC CIDR Block Selection	  
+
+Resources:
+##### Create VPC #####
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-VPC 
+
+##### Create Public and Private Subnets #####
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+       - Key: Name
+         Value: !Sub ${EnvironmentName}-Public-A
+      VpcId: !Ref MyVPC   
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+       - Key: Name
+         Value: !Sub ${EnvironmentName}-Private-A
+      VpcId: !Ref MyVPC	  
+
+##### Create Public and Private Route Table  #####
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+      - Key: Name
+        Value: !Sub ${EnvironmentName}-PublicRT	  
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+      - Key: Name
+        Value: !Sub ${EnvironmentName}-PrivateR
+
+##### Associate Public RT and Private RT with subnets #####
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1
+      RouteTableId: !Ref PrivateRouteTable
+
+##### Create Internet Gateway and Attach to VPC #####		  
+
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-IGW
+
+  AttachMyInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway	  
+
+##### Add Route to InternetGateway #####		
+
+  MyPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachMyInternetGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway		
+
+Outputs:
+  PublicSubnet1Id:
+    Description: Public Subnet Id
+    Value: !Ref PublicSubnet1
+
+  PrivateSubnet1Id:
+    Description: Private Subnet Id
+    Value: !Ref PrivateSubnet1	
+
+  MyVPCId:
+    Description: VPC Id
+    Value: !Ref MyVPC
