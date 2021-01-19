@@ -1,0 +1,94 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Test Cloud Formation"
+
+Parameters:
+  MyKeyName:
+    Description: "Select The Key Name From The List."
+    Type: AWS::EC2::KeyPair::KeyName
+
+  MyInstanceType: 
+    Description: "WebServer EC2 instance type"
+    Type: String
+    Default: "t2.micro"
+    AllowedValues: 
+      - "t2.nano"
+      - "t2.micro"
+      - "t2.small"
+      - "t2.medium"
+      - "t2.large"
+
+  MySecurityGroups:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: List<AWS::EC2::SecurityGroup::Id>	
+
+  MySubnetId1:
+    Description: Select Subnet From The List.
+    Type: AWS::EC2::Subnet::Id
+
+  MySubnetId2:
+    Description: Select Subnet From The List.
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+  MyEC2Instance1:
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: !Select [ 0, !GetAZs ]
+      ImageId: ami-04b1ddd35fd71475a
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyKeyName
+      SecurityGroupIds: !Ref MySecurityGroups
+      SubnetId: !Ref MySubnetId1
+      Tags: 
+        - Key: "Name"
+          Value: "CFInstance1"
+      Tenancy: default 
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum update -y
+          yum install httpd -y
+          echo "Hello From CloudFormation Instance1" > /var/www/html/index.html
+          systemctl enable httpd
+          systemctl start httpd
+
+  MyEC2Instance2:
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: !Select [ 1, !GetAZs ]
+      ImageId: ami-04b1ddd35fd71475a
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyKeyName
+      SecurityGroupIds: !Ref MySecurityGroups
+      SubnetId: !Ref MySubnetId2
+      Tags: 
+        - Key: "Name"
+          Value: "CFInstance2"
+      Tenancy: default 
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum update -y
+          yum install httpd -y
+          echo "Hello From CloudFormation Instance2" > /var/www/html/index.html
+          systemctl enable httpd
+          systemctl start httpd
+
+Outputs:
+  MyInstance1Id:
+    Description: My Instance Id
+    Value: !Ref MyEC2Instance1
+    Export: 
+      Name: MyInstance1
+  MyInstance2Id:
+    Description: My Instance Id
+    Value: !Ref MyEC2Instance2
+    Export: 
+      Name: MyInstance2
+  MyInstance1URL:
+    Description: Apache web URL
+    Value: !Sub 'http://${MyEC2Instance1.PublicIp}'
+  MyInstance2URL:
+    Description: Apache web URL
+    Value: !Sub 'http://${MyEC2Instance2.PublicIp}'

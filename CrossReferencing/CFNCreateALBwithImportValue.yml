@@ -1,0 +1,76 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Test Cloud Formation"
+
+Parameters:
+  VPCId:
+    Description: Select the VPC containing the instances
+    Type: AWS::EC2::VPC::Id
+
+  MySecurityGroup:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: AWS::EC2::SecurityGroup::Id
+  
+  MySubnetId:
+    Description: Select Subnet From The List.
+    Type: List<AWS::EC2::Subnet::Id>
+
+Resources:
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true 
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher: 
+        HttpCode: '200'
+      Name: WebTG
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: Name
+          Value: WebTG
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 300
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPCId
+      Targets: 
+        - Id: !ImportValue MyInstance1
+          Port: 80
+        - Id: !ImportValue MyInstance2
+          Port: 80
+
+  MyAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Name: WebALB
+      Scheme: internet-facing
+      SecurityGroups: 
+        - !Ref MySecurityGroup
+      Subnets: !Ref MySubnetId
+      Tags: 
+        - Key: Name
+          Value: WebALB
+      Type: application
+  
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      DefaultActions: 
+        - Type: forward 
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref MyAppLoadBalancer
+      Port: 80
+      Protocol: HTTP 
+
+Outputs:
+  ALBURL:
+    Description: URL of the website
+    Value: !Join ['', ['http://', !GetAtt [MyAppLoadBalancer, DNSName]]]

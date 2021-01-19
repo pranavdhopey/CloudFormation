@@ -1,0 +1,37 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Test Cloud Formation"
+
+Parameters:
+  MySecurityGroup:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: List<AWS::EC2::SecurityGroup::Id>	
+
+  MySubnetId:
+    Description: Select Subnet From The List.
+    Type: List<AWS::EC2::Subnet::Id>
+
+Resources:
+  MyClassicLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort: '80'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+      SecurityGroups: 
+        - !Ref MySecurityGroup
+      Subnets: !Ref MySubnetId
+      CrossZone: true
+      Instances: [!ImportValue MyInstance1, !ImportValue MyInstance2]
+
+Outputs:
+  CLBURL:
+    Description: URL of the website
+    Value: !Join ['', ['http://', !GetAtt [MyClassicLoadBalancer, DNSName]]]  
