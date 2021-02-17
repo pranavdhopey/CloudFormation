@@ -1,0 +1,65 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: "This CFN Template will create Two SecurityGroups one for LB and one for EC2 instance, 
+              LB security group will accept traffic on port 80 and 443 from world and EC2 will accept traffic on port 22 from world and on port 80 and 443 
+              from LB security group"
+
+Parameters:
+  VPCId:
+    Description: Create security group in this respective VPC
+    Type: AWS::EC2::VPC::Id
+
+Resources:  
+  LBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic on 80 and 443 port 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VPCId
+      Tags: 
+        - Key: "Name"
+          Value: "ELB-SecurityGroup"
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic on 22, 80 and 443 port 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          SourceSecurityGroupId: !Ref LBSecurityGroup
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          SourceSecurityGroupId: !Ref LBSecurityGroup	  
+      VpcId: !Ref VPCId 
+      Tags: 
+        - Key: "Name"
+          Value: "Web-SecurityGroup"
+
+Outputs:
+  LBSecurityGroup:
+    Description: LB SecurityGroup
+    Value: !Ref LBSecurityGroup
+    Export: 
+      Name: LBSecurityGroup		  
+
+  WebSecurityGroup:
+    Description: Web SecurityGroup
+    Value: !Ref WebSecurityGroup
+    Export: 
+      Name: WebSecurityGroup		          

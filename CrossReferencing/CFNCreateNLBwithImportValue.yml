@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This CFN Template will create Application LoadBalancer with TargetGroup"
+Description: "Test Cloud Formation"
 
 Parameters:
   VPCId:
@@ -23,14 +23,14 @@ Resources:
       HealthCheckIntervalSeconds: 30
       HealthCheckPath: /
       HealthCheckPort: traffic-port
-      HealthCheckProtocol: HTTP
+      HealthCheckProtocol: TCP
       HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 5
+      HealthyThresholdCount: 3
       Matcher: 
         HttpCode: '200'
       Name: WebTG
       Port: 80
-      Protocol: HTTP
+      Protocol: TCP
       Tags:
         - Key: Name
           Value: WebTG
@@ -38,7 +38,7 @@ Resources:
         - Key: deregistration_delay.timeout_seconds
           Value: 300
       TargetType: instance
-      UnhealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
       VpcId: !Ref VPCId
       Targets: 
         - Id: !ImportValue MyInstance1
@@ -50,15 +50,15 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties: 
       IpAddressType: ipv4
-      Name: WebALB
+      Name: WebNLB
       Scheme: internet-facing
       SecurityGroups: 
         - !Ref MySecurityGroup
       Subnets: !Ref MySubnetId
       Tags: 
         - Key: Name
-          Value: WebALB
-      Type: application
+          Value: WebNLB
+      Type: network
   
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -68,7 +68,7 @@ Resources:
           TargetGroupArn: !Ref WebTargetGroup
       LoadBalancerArn: !Ref MyAppLoadBalancer
       Port: 80
-      Protocol: HTTP 
+      Protocol: TCP 
 
 Outputs:
   ALBURL:

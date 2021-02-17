@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Test Cloud Formation"
+Description: "This CFN Template will create EC2 Instance in two AZ"
 
 Parameters:
   MyKeyName:

@@ -1,6 +1,7 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This CFN Template will create Application LoadBalancer with TargetGroup"
+Description: "This Cloud Formation Template will create Internet facing Network Load Balancer with Listener port 80(TCP) and Target group forwarding traffic on 
+             80(TCP) port with default health check settings"
 
 Parameters:
   VPCId:
@@ -21,16 +22,13 @@ Resources:
     Properties: 
       HealthCheckEnabled: true 
       HealthCheckIntervalSeconds: 30
-      HealthCheckPath: /
       HealthCheckPort: traffic-port
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 5
-      Matcher: 
-        HttpCode: '200'
+      HealthCheckTimeoutSeconds: 6
+      HealthyThresholdCount: 3
       Name: WebTG
       Port: 80
-      Protocol: HTTP
+      Protocol: TCP
       Tags:
         - Key: Name
           Value: WebTG
@@ -38,39 +36,32 @@ Resources:
         - Key: deregistration_delay.timeout_seconds
           Value: 300
       TargetType: instance
-      UnhealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
       VpcId: !Ref VPCId
-      Targets: 
-        - Id: !ImportValue MyInstance1
-          Port: 80
-        - Id: !ImportValue MyInstance2
-          Port: 80
 
-  MyAppLoadBalancer:
+  MyNetLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties: 
       IpAddressType: ipv4
-      Name: WebALB
+      Name: WebNLB
       Scheme: internet-facing
-      SecurityGroups: 
-        - !Ref MySecurityGroup
       Subnets: !Ref MySubnetId
       Tags: 
         - Key: Name
-          Value: WebALB
-      Type: application
+          Value: WebNLB
+      Type: network
   
-  ALBListener:
+  NLBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties: 
       DefaultActions: 
         - Type: forward 
           TargetGroupArn: !Ref WebTargetGroup
-      LoadBalancerArn: !Ref MyAppLoadBalancer
+      LoadBalancerArn: !Ref MyNetLoadBalancer
       Port: 80
-      Protocol: HTTP 
+      Protocol: TCP 
 
 Outputs:
-  ALBURL:
+  NLBURL:
     Description: URL of the website
-    Value: !Join ['', ['http://', !GetAtt [MyAppLoadBalancer, DNSName]]]
+    Value: !Join ['', ['http://', !GetAtt [MyNetLoadBalancer, DNSName]]]

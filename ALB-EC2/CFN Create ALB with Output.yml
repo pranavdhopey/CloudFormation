@@ -1,6 +1,7 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This CFN Template will create Application LoadBalancer with TargetGroup"
+Description: "This Cloud Formation Template will create Internet facing Application Load Balancer with Listener port 80 and Target group forwarding traffic on 80 port
+              with default health check settings"
 
 Parameters:
   VPCId:
@@ -40,11 +41,6 @@ Resources:
       TargetType: instance
       UnhealthyThresholdCount: 2
       VpcId: !Ref VPCId
-      Targets: 
-        - Id: !ImportValue MyInstance1
-          Port: 80
-        - Id: !ImportValue MyInstance2
-          Port: 80
 
   MyAppLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
