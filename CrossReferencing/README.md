@@ -4,27 +4,27 @@ In this example we will create EC2Stack with two EC2 instances in two avaialibil
 
 EC2Stack Properties:
 
-Instance1: 
+# Instance1: 
   AMIId: ami-04b1ddd35fd71475a
   AZ: ap-south-1a
   ExportedValue: MyInstance1
   
-Instance2: 
+# Instance2: 
   AMIId: ami-04b1ddd35fd71475a
   AZ: ap-south-1b
   ExportedValue: MyInstance2
   
-CLBStack Properties
+# CLBStack Properties
   ListnerPort: 80
   Protocol: HTTP
   LB Type: Classic LoadBalancer - Internet Facing
    
-ALBStack Properties
+# ALBStack Properties
   ListnerPort: 80
   Protocol: HTTP
   LB Type: Application LoadBalancer - Internet Facing
   
-NLBStack Properties
+# NLBStack Properties
   ListnerPort: 80
   Protocol: TCP
   LB Type: Network LoadBalancer - Internet Facing  
