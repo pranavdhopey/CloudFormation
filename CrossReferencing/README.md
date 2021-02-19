@@ -5,9 +5,9 @@ In this example we will create EC2Stack with two EC2 instances in two avaialibil
 # EC2Stack Properties:
 
 ## Instance1: 
-  **AMIId:** ami-04b1ddd35fd71475a 
-  **AZ:** ap-south-1a
-  **ExportedValue:** MyInstance1
+  **AMIId:** ami-04b1ddd35fd71475a                                                                                                                                                 
+  **AZ:** ap-south-1a                                                                                                                                                              
+  **ExportedValue:** MyInstance1                                                                                                                                                   
   
 ## Instance2: 
   **AMIId:** ami-04b1ddd35fd71475a                                                                                                                                                 
@@ -15,16 +15,16 @@ In this example we will create EC2Stack with two EC2 instances in two avaialibil
   **ExportedValue:** MyInstance2                                                                                                                                                   
   
 ## CLBStack Properties
-  **ListnerPort:** 80
-  **Protocol:** HTTP
-  **LB Type:** Classic LoadBalancer - Internet Facing
-   
+  **ListnerPort:** 80                                                                                                                                                              
+  **Protocol:** HTTP                                                                                                                                                               
+  **LB Type:** Classic LoadBalancer - Internet Facing                                                                                                                              
+  
 ## ALBStack Properties
-  **ListnerPort:** 80
-  **Protocol:** HTTP
-  **LB Type:** Application LoadBalancer - Internet Facing
+  **ListnerPort:** 80                                                                                                                                                              
+  **Protocol:** HTTP                                                                                                                                                               
+  **LB Type:** Application LoadBalancer - Internet Facing                                                                                                                          
   
 ## NLBStack Properties
-  **ListnerPort:** 80 
-  **Protocol:** TCP
-  **LB Type:** Network LoadBalancer - Internet Facing  
+  **ListnerPort:** 80                                                                                                                                                               
+  **Protocol:** TCP                                                                                                                                                                
+  **LB Type:** Network LoadBalancer - Internet Facing                                                                                                                              
