@@ -1,15 +1,12 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This CFN Template will create Application LoadBalancer with TargetGroup"
+Description: "This Cloud Formation Template will create Internet facing Application Load Balancer with Listener port 80 and Target group forwarding traffic on 80 port
+              with default health check settings"
 
 Parameters:
   VPCId:
     Description: Select the VPC containing the instances
     Type: AWS::EC2::VPC::Id
-
-  MySecurityGroup:
-    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
-    Type: AWS::EC2::SecurityGroup::Id
   
   MySubnetId:
     Description: Select Subnet From The List.
@@ -53,7 +50,7 @@ Resources:
       Name: WebALB
       Scheme: internet-facing
       SecurityGroups: 
-        - !Ref MySecurityGroup
+        - !ImportValue ELBSecurityGroup
       Subnets: !Ref MySubnetId
       Tags: 
         - Key: Name

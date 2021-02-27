@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
 
-Description: "This CFN Template will create Two SecurityGroups one for LB and one for EC2 instance, 
+Description: "This CFN Template will create Two SecurityGroups one for ELB and one for EC2 instance, 
               LB security group will accept traffic on port 80 and 443 from world and EC2 will accept traffic on port 22 from world and on port 80 and 443 
               from LB security group"
 
@@ -11,7 +11,7 @@ Parameters:
     Type: AWS::EC2::VPC::Id
 
 Resources:  
-  LBSecurityGroup:
+  ELBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow traffic on 80 and 443 port 
@@ -41,22 +41,22 @@ Resources:
         - IpProtocol: tcp
           FromPort: '80'
           ToPort: '80'
-          SourceSecurityGroupId: !Ref LBSecurityGroup
+          SourceSecurityGroupId: !Ref ELBSecurityGroup
         - IpProtocol: tcp
           FromPort: '443'
           ToPort: '443'
-          SourceSecurityGroupId: !Ref LBSecurityGroup	  
+          SourceSecurityGroupId: !Ref ELBSecurityGroup	  
       VpcId: !Ref VPCId 
       Tags: 
         - Key: "Name"
           Value: "Web-SecurityGroup"
 
 Outputs:
-  LBSecurityGroup:
-    Description: LB SecurityGroup
-    Value: !Ref LBSecurityGroup
+  ELBSecurityGroup:
+    Description: ELB SecurityGroup
+    Value: !Ref ELBSecurityGroup
     Export: 
-      Name: LBSecurityGroup		  
+      Name: ELBSecurityGroup		  
 
   WebSecurityGroup:
     Description: Web SecurityGroup

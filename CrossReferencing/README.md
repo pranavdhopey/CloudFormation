@@ -1,6 +1,6 @@
 This CloudFormation Stack will demonstrate how to create cross-stack reference i.e to reference a resource in AWS CloudFormation stack to Other stack.
 
-In this example we will create EC2Stack with two EC2 instances in two avaialibility zones (ap-south-1a and ap-south-1b) and Export the value of EC2 resources to be referenced as a input to CLBStack, ALBStack and NLBStack.
+In this example we will create SecurityGroup Stack with two security group one for ELB and other one for Web Servers and export the value of security groups as a input for ELB and Servers, and create EC2Stack with two EC2 instances in two avaialibility zones (ap-south-1a and ap-south-1b) and Export the value of EC2 resources to be referenced as a input to CLBStack, ALBStack and NLBStack.
 
 # EC2Stack Properties:
 

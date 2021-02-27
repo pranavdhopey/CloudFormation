@@ -1,15 +1,12 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Test Cloud Formation"
+Description: "This Cloud Formation Template will create Internet facing Network Load Balancer with Listener port 80(TCP) and Target group forwarding traffic on 
+             80(TCP) port with default health check settings"
 
 Parameters:
   VPCId:
     Description: Select the VPC containing the instances
     Type: AWS::EC2::VPC::Id
-
-  MySecurityGroup:
-    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
-    Type: AWS::EC2::SecurityGroup::Id
   
   MySubnetId:
     Description: Select Subnet From The List.
@@ -21,13 +18,10 @@ Resources:
     Properties: 
       HealthCheckEnabled: true 
       HealthCheckIntervalSeconds: 30
-      HealthCheckPath: /
       HealthCheckPort: traffic-port
-      HealthCheckProtocol: TCP
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 6
       HealthyThresholdCount: 3
-      Matcher: 
-        HttpCode: '200'
       Name: WebTG
       Port: 80
       Protocol: TCP
@@ -52,8 +46,6 @@ Resources:
       IpAddressType: ipv4
       Name: WebNLB
       Scheme: internet-facing
-      SecurityGroups: 
-        - !Ref MySecurityGroup
       Subnets: !Ref MySubnetId
       Tags: 
         - Key: Name

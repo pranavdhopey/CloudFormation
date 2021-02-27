@@ -1,12 +1,8 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This CFN Template will create Classic Loadbalancer"
+Description: "This Cloud Formation Template will create Internet facing Classic Load Balancer with Listener port 80 with default health check settings"
 
 Parameters:
-  MySecurityGroup:
-    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
-    Type: List<AWS::EC2::SecurityGroup::Id>	
-
   MySubnetId:
     Description: Select Subnet From The List.
     Type: List<AWS::EC2::Subnet::Id>
@@ -26,8 +22,11 @@ Resources:
         Interval: '30'
         Timeout: '5'
       SecurityGroups: 
-        - !Ref MySecurityGroup
+        - !ImportValue ELBSecurityGroup
       Subnets: !Ref MySubnetId
+      Tags: 
+        - Key: Name
+          Value: WebCLB
       CrossZone: true
       Instances: [!ImportValue MyInstance1, !ImportValue MyInstance2]
 
