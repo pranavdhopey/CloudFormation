@@ -1,0 +1,209 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This template will create Launch Configuration and Autoscaling group with Simple Scaling Policy. Sacling Policy will add(ScaleOut) one instance when CPU Utilization is above 90% and remove(ScaleIn) one instance when CPU Utilization is below 70%. It will send SNS notification when scaling even occurs"
+
+Parameters:
+  MyKeyName:
+    Description: "Select The Key Name From The List."
+    Type: AWS::EC2::KeyPair::KeyName
+
+  MyInstanceType: 
+    Description: "WebServer EC2 instance type"
+    Type: String
+    Default: "t2.micro"
+    AllowedValues: 
+      - "t2.nano"
+      - "t2.micro"
+      - "t2.small"
+      - "t2.medium"
+      - "t2.large"
+
+  MyAvailabilityZone:
+    Description: Select the Availability Zone from the List
+    Type: List<AWS::EC2::AvailabilityZone::Name>
+
+  MyEC2SecurityGroups:
+    Description: Select SecurityGroupIds for your EC2 Instances
+    Type: List<AWS::EC2::SecurityGroup::Id>	
+    
+  CLBSecurityGroups:
+    Description: SecurityGroupIds For Your CLB
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    
+  MySubnetId:
+    Description: Select Subnet From The List.
+    Type: List<AWS::EC2::Subnet::Id>
+    
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Launch Configuration"    
+        Parameters:
+          - MyInstanceType
+          - MyKeyName
+          - MyAvailabilityZone
+          - MyEC2SecurityGroups		  
+      - Label:
+          default: "AutoScalingGroup Configuration"          
+        Parameters:
+          - MySubnetId
+    ParameterLabels:
+      MySubnetId:
+        default: "In which Subnets you are planning to create these instances?"
+      KeyName:
+        default: "Be aware that once keyname is selected we cannot change it unless instance replaced"    
+
+Resources:
+  MyInstanceASG:  
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties: 
+      AutoScalingGroupName: MyWebServerASG
+      VPCZoneIdentifier: !Ref MySubnetId
+      LaunchConfigurationName: !Ref MyInstanceLC
+      Cooldown: 300
+      DesiredCapacity: 1
+      MaxSize: 3
+      MinSize: 1
+      Tags: 
+        - Key: Name
+          Value: WebServer
+          PropagateAtLaunch: true
+      NotificationConfiguration:
+        NotificationTypes:
+          - 'autoscaling:EC2_INSTANCE_LAUNCH'
+          - 'autoscaling:EC2_INSTANCE_LAUNCH_ERROR'
+          - 'autoscaling:EC2_INSTANCE_TERMINATE' 
+          - 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR'
+          - 'autoscaling:TEST_NOTIFICATION'
+        TopicARN: !Ref MySNSTopic
+      LoadBalancerNames: 
+        - !Ref MyClassicLoadBalancer
+
+  MyInstanceLC:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties: 
+      AssociatePublicIpAddress: true
+      ImageId: ami-0e306788ff2473ccb
+      InstanceMonitoring: false
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyKeyName
+      LaunchConfigurationName: MyWebServerLC
+      PlacementTenancy: default
+      SecurityGroups: !Ref MyEC2SecurityGroups
+      UserData: 
+        Fn::Base64: |
+            #!/bin/bash
+            yum update -y
+            yum install httpd -y
+            aws_instance=$(wget -q -O- http://169.254.169.254/latest/meta-data/instance-id)
+            instance_az=$(wget -q -O- http://169.254.169.254/latest/meta-data/placement/availability-zone)
+            echo "<p><strong>Hello From CloudFormation</strong></p>" > /var/www/html/index.html
+            echo "<p><strong>Instance ID:</strong> ${aws_instance} - <strong>Availability Zone:</strong> ${instance_az}</p>" >> /var/www/html/index.html
+            systemctl enable httpd
+            systemctl start httpd
+  
+  WebScaleUp:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref MyInstanceASG
+      Cooldown: "60"
+      PolicyType: SimpleScaling
+      ScalingAdjustment: 1
+
+  WebScaleDown:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties: 
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref MyInstanceASG
+      Cooldown: "60"
+      PolicyType: SimpleScaling
+      ScalingAdjustment: -1
+      
+  HighCPUAlarm:      
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref WebScaleUp
+      AlarmDescription: "Scale up when CPU > 90% for 10 minutes"
+      AlarmName: HighCPU
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 2
+      Dimensions: 
+        - Name: AutoScalingGroupName
+          Value: !Ref MyInstanceASG
+      EvaluationPeriods: 2 
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 300
+      Statistic: Average
+      Threshold: 90
+
+  LowCPUAlarm: 
+    Type: AWS::CloudWatch::Alarm
+    Properties: 
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref WebScaleDown
+      AlarmDescription: "Scale down when CPU < 70% for 10 minutes"
+      AlarmName: LowCPU
+      ComparisonOperator: LessThanThreshold
+      DatapointsToAlarm: 2
+      Dimensions: 
+        - Name: AutoScalingGroupName
+          Value: !Ref MyInstanceASG
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 300
+      Statistic: Average
+      Threshold: 70      
+
+  MyClassicLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      LoadBalancerName: dev-clb
+      Subnets: !Ref MySubnetId
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort: '80'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+      SecurityGroups: !Ref CLBSecurityGroups
+      CrossZone: true	  
+      
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: AutoScalingAlert
+
+  MySubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: "pranav.dhope@gmail.com"
+      Protocol: email
+      TopicArn: !Ref 'MySNSTopic'   
+       
+Outputs: 
+  AutoscalingGroup: 
+    Description: Name of AutoScaling Group
+    Value: !Ref MyInstanceASG
+  LaunchConfig:
+    Description: Name of LaunchConfiguration
+    Value: !Ref MyInstanceLC      
+  ScaleUpAlarm:
+    Value: !Ref HighCPUAlarm
+    Description: Scale Up Alarm
+  ScaleDownAlarm:
+    Value: !Ref LowCPUAlarm
+    Description: Scale Down Alarm  
+  ALBURL:
+    Description: URL of the website
+    Value: !Join ['', ['http://', !GetAtt [MyClassicLoadBalancer, DNSName]]]    
