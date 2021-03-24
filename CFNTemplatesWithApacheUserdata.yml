@@ -1,0 +1,85 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This CFN template will create an EC2 instance with apache installed with custom index.html page"
+
+Parameters:
+  MyKeyName:
+    Description: "Select The Key Name From The List."
+    Type: AWS::EC2::KeyPair::KeyName
+
+  MyInstanceType: 
+    Description: "WebServer EC2 instance type"
+    Type: String
+    Default: "t2.micro"
+    AllowedValues: 
+      - "t2.nano"
+      - "t2.micro"
+      - "t2.small"
+      - "t2.medium"
+      - "t2.large"
+
+  MyAvailabilityZone:
+    Description: Select the Availability Zone from the List
+    Type: String
+    Default: ap-south-1a
+    AllowedValues:
+      - ap-south-1a
+      - ap-south-1b
+      - ap-south-1c
+
+  MySecurityGroups:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: List<AWS::EC2::SecurityGroup::Id>	
+
+  MySubnetId:
+    Description: Select Subnet From The List.
+    Type: AWS::EC2::Subnet::Id
+    
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: " EC2 Instance Parameters "    
+        Parameters:
+          - MyInstanceType
+          - MyKeyName
+          - MyAvailabilityZone
+          - MySubnetId
+          - MySecurityGroups		  
+    ParameterLabels:
+      MyAvailabilityZone:
+        default: "In which MyAvailabilityZone you are planning to create these instances"
+      KeyName:
+        default: "Be aware that once keyname is selected we cannot change it unless instance replaced"    
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: !Ref MyAvailabilityZone
+      ImageId: ami-0732b62d310b80e97
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyKeyName
+      SecurityGroupIds: !Ref MySecurityGroups
+      SubnetId: !Ref MySubnetId
+      Tags: 
+        - Key: "Name"
+          Value: "CFInstance"
+      Tenancy: default    
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          yum update -y
+          yum install httpd -y
+          aws_instance=$(wget -q -O- http://169.254.169.254/latest/meta-data/instance-id)
+          instance_az=$(wget -q -O- http://169.254.169.254/latest/meta-data/placement/availability-zone)
+          echo "<p><strong>Hello From CloudFormation</strong></p>" > /var/www/html/index.html
+          echo "<p><strong>Instance ID:</strong> ${aws_instance} - <strong>Availability Zone:</strong> ${instance_az}</p>" >> /var/www/html/index.html
+          systemctl enable httpd
+          systemctl start httpd
+               
+    
+Outputs:
+  MyInstanceURL:
+    Description: Apache web URL
+    Value: !Sub 'http://${MyEC2Instance.PublicDnsName}'
