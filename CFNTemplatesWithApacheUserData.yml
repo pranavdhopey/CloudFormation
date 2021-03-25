@@ -27,7 +27,7 @@ Parameters:
       - ap-south-1b
       - ap-south-1c
 
-  MySecurityGroups:
+  MySecurityGroupIDs:
     Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
     Type: List<AWS::EC2::SecurityGroup::Id>	
 
@@ -45,7 +45,7 @@ Metadata:
           - MyKeyName
           - MyAvailabilityZone
           - MySubnetId
-          - MySecurityGroups		  
+          - MySecurityGroupIDs		  
     ParameterLabels:
       MyAvailabilityZone:
         default: "In which MyAvailabilityZone you are planning to create these instances"
@@ -60,7 +60,7 @@ Resources:
       ImageId: ami-0732b62d310b80e97
       InstanceType: !Ref MyInstanceType
       KeyName: !Ref MyKeyName
-      SecurityGroupIds: !Ref MySecurityGroups
+      SecurityGroupIds: !Ref MySecurityGroupIDs
       SubnetId: !Ref MySubnetId
       Tags: 
         - Key: "Name"
