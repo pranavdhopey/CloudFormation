@@ -1,0 +1,97 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This Cloud Formation Template will create EC2 Instance with IAM policy attached having S3 Read Only Access"
+
+Parameters:
+  InstanceName:
+    Description: Give Tag to Instance
+    Type: String
+    Default: WebServer
+
+  MyKeyName:
+    Description: "Select The Key Name From The List."
+    Type: AWS::EC2::KeyPair::KeyName
+
+  MyInstanceType: 
+    Description: "WebServer EC2 instance type"
+    Type: String
+    Default: "t2.micro"
+    AllowedValues: 
+      - "t2.nano"
+      - "t2.micro"
+      - "t2.small"
+      - "t2.medium"
+      - "t2.large"
+
+  MyAvailabilityZone:
+    Description: Select the Availability Zone from the List
+    Type: String
+    Default: ap-south-1a
+    AllowedValues:
+      - ap-south-1a
+      - ap-south-1b
+      - ap-south-1c
+
+  MySecurityGroups:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: List<AWS::EC2::SecurityGroup::Id>	
+
+  MySubnetId:
+    Description: Select Subnet From The List.
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: !Ref MyAvailabilityZone
+      ImageId: ami-0732b62d310b80e97
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyKeyName
+      SecurityGroupIds: !Ref MySecurityGroups
+      SubnetId: !Ref MySubnetId
+      Tags: 
+        - Key: "Name"
+          Value: !Ref InstanceName
+      Tenancy: default
+      IamInstanceProfile: !Ref MyInstanceS3AccessProfile
+
+  MyEc2S3AccessProfileRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: MyEc2InstanceS3ReadAccessPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 's3:Get*'
+                  - 's3:List*'
+                Resource: '*'
+
+  MyInstanceS3AccessProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref MyEc2S3AccessProfileRole	  
+
+Outputs:
+  MyInstanceId:
+    Description: Public IP Address
+    Value: !GetAtt MyEC2Instance.PublicIp
+  
+  MyEc2S3AccessProfileRole:
+    Description: Public IP Address
+    Value: !Ref MyEc2S3AccessProfileRole 
