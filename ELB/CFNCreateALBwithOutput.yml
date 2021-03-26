@@ -1,7 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This Cloud Formation Template will create Internet facing Application Load Balancer with Listener port 80 and Target group forwarding traffic on 80 port
-              with default health check settings"
+Description: "This Cloud Formation Template will create Internet facing Application Load Balancer with Listener port 80 and Target group forwarding traffic on 80 port with default health check settings"
 
 Parameters:
   VPCId:
