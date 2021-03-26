@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This template will create Launch Configuration and Autoscaling group with Simple Scaling Policy. Sacling Policy will add(ScaleOut) one instance when CPU Utilization is above 90% and remove(ScaleIn) one instance when CPU Utilization is below 70%. It will send SNS notification when scaling even occurs"
+Description: "This template will create Launch Configuration and Autoscaling group with Simple Scaling Policy.This Scaling Policy will add(ScaleOut) one instance when CPU Utilization is above 90% and remove(ScaleIn) one instance when CPU Utilization is below 70%. It will send SNS notification when scaling even occurs"
 
 Parameters:
   MyKeyName:
@@ -22,13 +22,21 @@ Parameters:
     Description: Select the Availability Zone from the List
     Type: List<AWS::EC2::AvailabilityZone::Name>
 
-  MySecurityGroups:
-    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+  MyEC2SecurityGroups:
+    Description: Select SecurityGroupIds for your EC2 Instances
     Type: List<AWS::EC2::SecurityGroup::Id>	
-
+    
+  ALBSecurityGroups:
+    Description: Select SecurityGroupIds For Your ALB
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    
   MySubnetId:
     Description: Select Subnet From The List.
     Type: List<AWS::EC2::Subnet::Id>
+
+  VPCId:
+    Description: Select the VPC From The List.
+    Type: AWS::EC2::VPC::Id
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -43,10 +51,11 @@ Metadata:
       - Label:
           default: "AutoScalingGroup Configuration"          
         Parameters:
+          - VPCId  
           - MySubnetId
     ParameterLabels:
-      MySubnetId:
-        default: "In which Subnets you are planning to create these instances"
+      VPCId:
+        default: "In which VPC you are planning to create these instances"
       KeyName:
         default: "Be aware that once keyname is selected we cannot change it unless instance replaced"
 
@@ -73,6 +82,8 @@ Resources:
           - 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR'
           - 'autoscaling:TEST_NOTIFICATION'
         TopicARN: !Ref MySNSTopic
+      TargetGroupARNs: 
+        - !Ref WebTargetGroup
 
   MyInstanceLC:
     Type: AWS::AutoScaling::LaunchConfiguration
@@ -84,7 +95,7 @@ Resources:
       KeyName: !Ref MyKeyName
       LaunchConfigurationName: MyWebServerLC
       PlacementTenancy: default
-      SecurityGroups: !Ref MySecurityGroups
+      SecurityGroups: !Ref MyEC2SecurityGroups
       UserData: 
         Fn::Base64: |
             #!/bin/bash
@@ -154,6 +165,54 @@ Resources:
       Period: 300
       Statistic: Average
       Threshold: 70      
+
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true 
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher: 
+        HttpCode: '200'
+      Name: WebTG
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: Name
+          Value: EC2TargetGroup
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 300
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPCId
+
+  MyAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Name: dev-alb
+      Scheme: internet-facing
+      SecurityGroups: !Ref ALBSecurityGroups
+      Subnets: !Ref MySubnetId
+      Tags: 
+        - Key: Name
+          Value: WebALB
+      Type: application
+  
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      DefaultActions: 
+        - Type: forward 
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref MyAppLoadBalancer
+      Port: 80
+      Protocol: HTTP 	  
       
   MySNSTopic:
     Type: AWS::SNS::Topic
@@ -165,7 +224,7 @@ Resources:
     Properties:
       Endpoint: "pranav.dhope@gmail.com"
       Protocol: email
-      TopicArn: !Ref 'MySNSTopic'       
+      TopicArn: !Ref 'MySNSTopic'          
        
 Outputs: 
   AutoscalingGroup: 
@@ -180,3 +239,7 @@ Outputs:
   ScaleDownAlarm:
     Value: !Ref LowCPUAlarm
     Description: Scale Down Alarm  
+  ALBURL:
+    Description: URL of the website
+    Value: !Join ['', ['http://', !GetAtt [MyAppLoadBalancer, DNSName]]]  
+    
