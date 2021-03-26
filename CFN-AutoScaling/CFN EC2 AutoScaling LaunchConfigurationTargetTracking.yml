@@ -22,7 +22,7 @@ Parameters:
     Description: Select the Availability Zone from the List
     Type: 'List<AWS::EC2::AvailabilityZone::Name>'
 
-  MySecurityGroups:
+  MyEC2SecurityGroups:
     Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
     Type: 'List<AWS::EC2::SecurityGroup::Id>'
 
@@ -85,7 +85,7 @@ Resources:
       KeyName: !Ref MyKeyName
       LaunchConfigurationName: MyWebServerLC
       PlacementTenancy: default
-      SecurityGroups: !Ref MySecurityGroups
+      SecurityGroups: !Ref MyEC2SecurityGroups
       UserData: 
         Fn::Base64: |
            #!/bin/bash
