@@ -7,13 +7,22 @@ Parameters:
     Description: Select the VPC containing the instances
     Type: AWS::EC2::VPC::Id
 
-  MySecurityGroup:
-    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
-    Type: AWS::EC2::SecurityGroup::Id
-  
   MySubnetId:
-    Description: Select Subnet From The List.
+    Description: Select Subnet From The List to route traffic to by LB.
     Type: List<AWS::EC2::Subnet::Id>
+    
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Load Balancer Configuration"    
+        Parameters:
+          - VPCId
+          - MySubnetId
+    ParameterLabels:
+      MySubnetId:
+        default: "select a Subnet for each Availability Zone where you wish traffic to be routed by your load balancer"    
+    
 
 Resources:
   WebTargetGroup:
@@ -33,7 +42,7 @@ Resources:
           Value: WebTG
       TargetGroupAttributes: 
         - Key: deregistration_delay.timeout_seconds
-          Value: 300
+          Value: 300       
       TargetType: instance
       UnhealthyThresholdCount: 3
       VpcId: !Ref VPCId
@@ -45,6 +54,9 @@ Resources:
       Name: WebNLB
       Scheme: internet-facing
       Subnets: !Ref MySubnetId
+      LoadBalancerAttributes: 
+        - Key: load_balancing.cross_zone.enabled
+          Value: true
       Tags: 
         - Key: Name
           Value: WebNLB
