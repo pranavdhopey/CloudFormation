@@ -1,0 +1,52 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This Cloud Formation Template will create Internet facing Classic Load Balancer with Listener port 80 with default health check settings"
+
+Parameters:
+  MyELBSecurityGroup:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: AWS::EC2::SecurityGroup::Id
+
+  MySubnetId:
+    Description: Select Subnet From The List to route traffic to by LB.
+    Type: List<AWS::EC2::Subnet::Id>
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Load Balancer Configuration"    
+        Parameters:
+          - MyELBSecurityGroup
+          - MySubnetId
+    ParameterLabels:
+      MySubnetId:
+        default: "select a Subnet for each Availability Zone where you wish traffic to be routed by your load balancer"
+
+
+Resources:
+  MyClassicLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort: '80'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        HealthyThreshold: '10'
+        UnhealthyThreshold: '2'
+        Interval: '30'
+        Timeout: '5'
+      SecurityGroups: 
+        - !Ref MyELBSecurityGroup
+      Subnets: !Ref MySubnetId
+      CrossZone: true
+      Tags:
+        - Key: Name
+          Value: WebCLB
+
+Outputs:
+  CLBURL:
+    Description: URL of the website
+    Value: !Join ['', ['http://', !GetAtt [MyClassicLoadBalancer, DNSName]]]  

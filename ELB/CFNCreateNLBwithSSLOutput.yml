@@ -1,0 +1,90 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This Cloud Formation Template will create Internet facing Network Load Balancer with Listener port 80(TCP) and Target group forwarding traffic on 80(TCP) port with default health check settings"
+
+Parameters:
+  VPCId:
+    Description: Select the VPC containing the instances
+    Type: AWS::EC2::VPC::Id
+
+  MySubnetId:
+    Description: Select Subnet From The List to route traffic to by LB.
+    Type: List<AWS::EC2::Subnet::Id>
+    
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Load Balancer Configuration"    
+        Parameters:
+          - VPCId
+          - MySubnetId
+    ParameterLabels:
+      MySubnetId:
+        default: "select a Subnet for each Availability Zone where you wish traffic to be routed by your load balancer"    
+    
+
+Resources:
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true 
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 6
+      HealthyThresholdCount: 3
+      Name: WebTG
+      Port: 80
+      Protocol: TCP
+      Tags:
+        - Key: Name
+          Value: WebTG
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 300       
+      TargetType: instance
+      UnhealthyThresholdCount: 3
+      VpcId: !Ref VPCId
+
+  MyNetLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Name: WebNLB
+      Scheme: internet-facing
+      Subnets: !Ref MySubnetId
+      LoadBalancerAttributes: 
+        - Key: load_balancing.cross_zone.enabled
+          Value: true
+      Tags: 
+        - Key: Name
+          Value: WebNLB
+      Type: network
+  
+  NLBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      DefaultActions: 
+        - Type: forward 
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref MyNetLoadBalancer
+      Port: 80
+      Protocol: TCP
+
+  ALBListenerTLS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      DefaultActions: 
+        - Type: forward 
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref MyAppLoadBalancer
+      Certificates:
+        - CertificateArn: arn:aws:acm:ap-south-1:661703008424:certificate/82b10dfb-5874-424f-8521-2d864e20dcfc
+      Port: 443
+      Protocol: TLS      
+
+Outputs:
+  NLBURL:
+    Description: URL of the website
+    Value: !Join ['', ['https://', !GetAtt [MyNetLoadBalancer, DNSName]]]

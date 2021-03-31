@@ -1,0 +1,96 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "This Cloud Formation Template will create Internet facing Application Load Balancer with Listener port 80 and 443 with certificated provided from ACM and Target group forwarding traffic on 80 port with default health check settings"
+
+Parameters:
+  VPCId:
+    Description: Select the VPC containing the instances
+    Type: AWS::EC2::VPC::Id
+
+  MyELBSecurityGroup:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: AWS::EC2::SecurityGroup::Id
+  
+  MySubnetId:
+    Description: Select Subnet From The List to route traffic to by LB.
+    Type: List<AWS::EC2::Subnet::Id>
+    
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Load Balancer Configuration"    
+        Parameters:
+          - MyELBSecurityGroup
+          - VPCId
+          - MySubnetId
+    ParameterLabels:
+      MySubnetId:
+        default: "select a Subnet for each Availability Zone where you wish traffic to be routed by your load balancer"    
+
+Resources:
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      HealthCheckEnabled: true 
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher: 
+        HttpCode: '200'
+      Name: WebTG
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: Name
+          Value: WebTG
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 300  
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPCId
+
+  MyAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Name: WebALB
+      Scheme: internet-facing
+      SecurityGroups: 
+        - !Ref MyELBSecurityGroup
+      Subnets: !Ref MySubnetId
+      Tags: 
+        - Key: Name
+          Value: WebALB
+      Type: application
+  
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      DefaultActions: 
+        - Type: forward 
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref MyAppLoadBalancer
+      Port: 80
+      Protocol: HTTP 
+  
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      DefaultActions: 
+        - Type: forward 
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref MyAppLoadBalancer
+      Certificates:
+        - CertificateArn: arn:aws:acm:ap-south-1:661703008424:certificate/82b10dfb-5874-424f-8521-2d864e20dcfc
+      Port: 443
+      Protocol: HTTPS 
+
+Outputs:
+  ALBURL:
+    Description: URL of the website
+    Value: !Join ['', ['https://', !GetAtt [MyAppLoadBalancer, DNSName]]]
