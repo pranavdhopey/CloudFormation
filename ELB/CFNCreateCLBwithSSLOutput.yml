@@ -36,7 +36,7 @@ Resources:
         InstancePort: '80'
         InstanceProtocol: HTTP
         Protocol: HTTPS  
-        SSLCertificateId: arn:aws:acm:ap-south-1:661703008424:certificate/82b10dfb-5874-424f-8521-2d864e20dcfc  
+        SSLCertificateId: arn:aws:acm:region:123456789012:certificate/12345678-1234-1234-1234-123456789012 
       HealthCheck:
         Target: HTTP:80/
         HealthyThreshold: '10'
