@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This Cloud Formation Template will create Internet facing Classic Load Balancer with Listener port 80 with default health check settings"
+Description: "This Cloud Formation Template will create Internet facing Classic Load Balancer with Listener port 80 and 443 with certificated provided from ACM with default health check settings."
 
 Parameters:
   MyELBSecurityGroup:

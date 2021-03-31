@@ -32,6 +32,11 @@ Resources:
       - LoadBalancerPort: '80'
         InstancePort: '80'
         Protocol: HTTP
+      - LoadBalancerPort: '443'
+        InstancePort: '80'
+        InstanceProtocol: HTTP
+        Protocol: HTTPS  
+        SSLCertificateId: arn:aws:acm:ap-south-1:661703008424:certificate/82b10dfb-5874-424f-8521-2d864e20dcfc  
       HealthCheck:
         Target: HTTP:80/
         HealthyThreshold: '10'
@@ -49,4 +54,4 @@ Resources:
 Outputs:
   CLBURL:
     Description: URL of the website
-    Value: !Join ['', ['http://', !GetAtt [MyClassicLoadBalancer, DNSName]]]  
+    Value: !Join ['', ['https://', !GetAtt [MyClassicLoadBalancer, DNSName]]]  
