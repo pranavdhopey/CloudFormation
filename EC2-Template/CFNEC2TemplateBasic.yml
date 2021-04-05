@@ -1,0 +1,46 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: "Basic EC2 Instance CFN Template"
+
+Parameters:
+  MyKeyName:
+    Description: "Select the Kay Name from the List"
+    Type: AWS::EC2::KeyPair::KeyName
+
+  SecurityGroupIds:
+    Description: "Security groups that can be used to access the EC2 instances"
+    Type: List<AWS::EC2::SecurityGroup::Id>	
+
+  MyAvailabilityZone:
+    Description: "Select Availability Zone"
+    Type: String
+    Default: ap-south-1a
+    AllowedValues:
+      - ap-south-1a
+      - ap-south-1b
+      - ap-south-1c
+ 
+  MySubnetId:
+    Description: "Select Subnet"
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: ami-0bcf5425cdc1d8a85
+      InstanceType: t2.micro
+      KeyName: !Ref MyKeyName
+      SecurityGroupIds: !Ref SecurityGroupIds
+      AvailabilityZone: !Ref MyAvailabilityZone
+      SubnetId: !Ref MySubnetId
+      Tags: 
+        - Key: "Name"
+          Value: "CFNInstance"
+      Tenancy: default
+
+Outputs:
+  MyInstanceId:
+    Description: My EC2 Instance Id
+    Value: !Ref MyEC2Instance
