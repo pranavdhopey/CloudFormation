@@ -209,14 +209,6 @@ Outputs:
     Description: A reference to the created VPC
     Value: !Ref MyVPC
 
-  PublicSubnets:
-    Description: A list of the public subnets
-    Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
-
-  PrivateSubnets:
-    Description: A list of the private subnets
-    Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
-
   PublicSubnet1Id:
     Description: A reference to the public subnet in the 1st Availability Zone
     Value: !Ref PublicSubnet1
