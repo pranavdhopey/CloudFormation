@@ -9,27 +9,27 @@ Parameters:
   VpcCIDR:
     Description: Please enter the IP range (CIDR notation) for this VPC
     Type: String
-    Default: 10.192.0.0/16
+    Default: 192.168.0.0/16
     
   PublicSubnet1CIDR:
     Description: Please enter the IP range (CIDR notation) for Public Subnet 1
     Type: String
-    Default: 10.192.1.0/24
+    Default: 192.168.1.0/24
 
   PublicSubnet2CIDR:
     Description: Please enter the IP range (CIDR notation) for Public Subnet 2
     Type: String
-    Default: 10.192.2.0/24
+    Default: 192.168.2.0/24
 
   PrivateSubnet1CIDR:
     Description: Please enter the IP range (CIDR notation) for Private Subnet 1
     Type: String
-    Default: 10.192.11.0/24
+    Default: 192.168.11.0/24
 
   PrivateSubnet2CIDR:
     Description: Please enter the IP range (CIDR notation) for Private Subnet 2
     Type: String
-    Default: 10.192.12.0/24    
+    Default: 192.168.12.0/24    
 
 Metadata:
   AWS::CloudFormation::Interface:
