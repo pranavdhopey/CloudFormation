@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "AWS CloudFormation Sample Template for Apache Web Server This template demonstrates using the AWS CloudFormation bootstrap scripts to install the packages and files necessary to deploy the Apache web server at instance launch time."
+Parameters:
+  MyKeyName:
+    Description: Select The Key Name From The List.
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  MyInstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+  MyAvailabilityZone:
+    Description: Select the Availability Zone from the List
+    Type: String
+    Default: ap-south-1a
+    AllowedValues:
+      - ap-south-1a
+      - ap-south-1b
+      - ap-south-1c
+  MySecurityGroupId:
+    Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  MySubnetId:
+    Description: Select Subnet From The List.
+    Type: AWS::EC2::Subnet::Id
+Resources:
+  MyEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M
+    Metadata:
+      Comment: Install httpd package
+      'AWS::CloudFormation::Init':
+        config:
+          packages:
+            yum:
+              httpd: []
+          files:
+            /var/www/html/index.html:
+              content: | 
+                <html>
+                  <body>
+                    <h1>Goinit.Net</h1>
+                    <h2>CloudFormation Apache Web Server</h2>
+                    <p>Welcome to My page.</p>
+                  </body> 
+                </html>
+              mode: '000644'
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.MyEC2Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource MyEC2Instance --region ${AWS::Region}
+              mode: '000400'
+              owner: root
+              group: root
+          services:
+            sysvinit:
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf    
+    Properties:
+      AvailabilityZone: !Ref MyAvailabilityZone
+      ImageId: ami-0bcf5425cdc1d8a85
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyKeyName
+      SecurityGroupIds: !Ref MySecurityGroupId
+      SubnetId: !Ref MySubnetId
+      Tags:
+        - Key: Name
+          Value: WebInstance
+        - Key: App
+          Value: Apache        
+      Tenancy: default
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash -xe
+            #Get latest cfn package
+            yum update -y aws-cfn-bootstrap
+            #Start cfn-init to install all metadata content
+            /opt/aws/bin/cfn-init --stack ${AWS::StackName} --resource MyEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+            #Signal the status from cfn-init
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource MyEC2Instance --region ${AWS::Region}
+Outputs:
+  MyInstanceURL:
+    Description: Apache web URL
+    Value: !Sub 'http://${MyEC2Instance.PublicDnsName}'
