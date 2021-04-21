@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: 2010-09-09
-Description: "This template will create Launch Configuration and Autoscaling group with Target Tracking Scaling Policy. This Sacling Policy will add(ScaleOut) one instance when CPU Utilization is above 85%. It will send SNS notification when scaling even occurs"
+Description: "This template will create Launch Configuration and Autoscaling group with Target Tracking Scaling Policy. This Scaling Policy will add(ScaleOut) one instance when CPU Utilization is above 85%. It will send SNS notification when scaling event occurs"
   
 Parameters:
   MyKeyName:

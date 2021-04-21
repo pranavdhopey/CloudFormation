@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: 2010-09-09
-Description: "This template will create Launch Configuration and Autoscaling group with Step Scaling Policy. This Scaling Policy will add(ScaleOut) one and  two instances when CPU Utilization is between 70% to 80%, 80% to 90% and 90% above respectively and remove(ScaleIn) one-one instances when CPU Utilization is below 90% to 80%, 80%to 70% and 70% below. It will send SNS notification when scaling event occurs" 
+Description: "This template will create Launch Configuration and Autoscaling group with Target Tracking Scaling Policy. Autoscaling group will be attached to Application Load Balancer which we will be creating in this template. The Scaling Policy will add(ScaleOut) one instance when CPU Utilization is above 85%. It will send SNS notification when scaling event occurs"
   
 Parameters:
   MyKeyName:
@@ -25,10 +25,18 @@ Parameters:
   MyEC2SecurityGroups:
     Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
     Type: 'List<AWS::EC2::SecurityGroup::Id>'
+    
+  ALBSecurityGroups:
+    Description: SecurityGroupIds For Your ALB
+    Type: List<AWS::EC2::SecurityGroup::Id>  
 
   MySubnetId:
     Description: Select Subnet From The List.
-    Type: 'List<AWS::EC2::Subnet::Id>'
+    Type: List<AWS::EC2::Subnet::Id>
+
+  VPCId:
+    Description: Select the VPC From The List.
+    Type: AWS::EC2::VPC::Id
     
 Metadata:
   AWS::CloudFormation::Interface:
@@ -43,13 +51,15 @@ Metadata:
       - Label:
           default: "AutoScalingGroup Configuration"          
         Parameters:
+          - VPCId
           - MySubnetId
+          - ALBSecurityGroups
     ParameterLabels:
       MySubnetId:
         default: "In which Subnets you are planning to create these instances?"
       KeyName:
-        default: "Be aware that once keyname is selected we cannot change it unless instance replaced"    
-    
+        default: "Be aware that once keyname is selected we cannot change it unless instance replaced"
+
 
 Resources:
   MyInstanceASG:
@@ -62,6 +72,10 @@ Resources:
       DesiredCapacity: 1
       MaxSize: 3
       MinSize: 1
+      TargetGroupARNs:
+        - !Ref WebTargetGroup
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300      
       Tags:
         - Key: Name
           Value: WebServer
@@ -86,7 +100,7 @@ Resources:
       LaunchConfigurationName: MyWebServerLC
       PlacementTenancy: default
       SecurityGroups: !Ref MyEC2SecurityGroups
-      UserData:
+      UserData: 
         Fn::Base64: |
            #!/bin/bash
            yum update -y
@@ -98,81 +112,65 @@ Resources:
            systemctl enable httpd
            systemctl start httpd
 
-  WebHighCPUPolicy:
+  WebCPUPolicy:
     Type: 'AWS::AutoScaling::ScalingPolicy'
     Properties:
       AdjustmentType: ChangeInCapacity
       AutoScalingGroupName: !Ref MyInstanceASG
-      PolicyType: StepScaling
-      MetricAggregationType: Average 
-      EstimatedInstanceWarmup: 60
-      StepAdjustments:
-        - MetricIntervalLowerBound: 0
-          MetricIntervalUpperBound: 10
-          ScalingAdjustment: 1 
-        - MetricIntervalLowerBound: 10
-          MetricIntervalUpperBound: 20
-          ScalingAdjustment: 1
-        - MetricIntervalLowerBound: 20
-          ScalingAdjustment: 2
-  
-  WebLowCPUPolicy:
-    Type: 'AWS::AutoScaling::ScalingPolicy'
-    Properties:
-      AdjustmentType: ChangeInCapacity
-      AutoScalingGroupName: !Ref MyInstanceASG
-      PolicyType: StepScaling
-      MetricAggregationType: Average 
-      EstimatedInstanceWarmup: 60
-      StepAdjustments:
-        - MetricIntervalLowerBound: -10 
-          MetricIntervalUpperBound: 0
-          ScalingAdjustment: -1
-        - MetricIntervalLowerBound: -20 
-          MetricIntervalUpperBound: -10
-          ScalingAdjustment: -1
-        - MetricIntervalUpperBound: -20
-          ScalingAdjustment: -1
-          
-  HighCPUAlarm:      
-    Type: AWS::CloudWatch::Alarm
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 85 
+        DisableScaleIn: false
+        
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties: 
-      ActionsEnabled: true
-      AlarmActions:
-        - !Ref WebHighCPUPolicy
-      AlarmDescription: "Scale up when CPU > 70% for 5 minutes"
-      AlarmName: HighCPU
-      ComparisonOperator: GreaterThanThreshold
-      DatapointsToAlarm: 1
-      Dimensions: 
-        - Name: AutoScalingGroupName
-          Value: !Ref MyInstanceASG
-      EvaluationPeriods: 1 
-      MetricName: CPUUtilization
-      Namespace: AWS/EC2
-      Period: 300
-      Statistic: Average
-      Threshold: 70
+      HealthCheckEnabled: true 
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      Matcher: 
+        HttpCode: '200'
+      Name: WebTG
+      Port: 80
+      Protocol: HTTP
+      Tags:
+        - Key: Name
+          Value: EC2TargetGroup
+      TargetGroupAttributes: 
+        - Key: deregistration_delay.timeout_seconds
+          Value: 300
+      TargetType: instance
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPCId
 
-  LowCPUAlarm: 
-    Type: AWS::CloudWatch::Alarm
+  MyAppLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties: 
-      ActionsEnabled: true
-      AlarmActions:
-        - !Ref WebLowCPUPolicy
-      AlarmDescription: "Scale down when CPU < 90% for 5 minutes"
-      AlarmName: LowCPU
-      ComparisonOperator: LessThanThreshold
-      DatapointsToAlarm: 1
-      Dimensions: 
-        - Name: AutoScalingGroupName
-          Value: !Ref MyInstanceASG
-      EvaluationPeriods: 1
-      MetricName: CPUUtilization
-      Namespace: AWS/EC2
-      Period: 300
-      Statistic: Average
-      Threshold: 90          
+      IpAddressType: ipv4
+      Name: dev-alb
+      Scheme: internet-facing
+      SecurityGroups: !Ref ALBSecurityGroups
+      Subnets: !Ref MySubnetId
+      Tags: 
+        - Key: Name
+          Value: WebALB
+      Type: application
+  
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties: 
+      DefaultActions: 
+        - Type: forward 
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref MyAppLoadBalancer
+      Port: 80
+      Protocol: HTTP     
 
   MySNSTopic:
     Type: AWS::SNS::Topic
@@ -193,3 +191,6 @@ Outputs:
   LaunchConfig:
     Description: Name of LaunchConfiguration
     Value: !Ref MyInstanceLC
+  ALBURL:
+    Description: URL of the website
+    Value: !Join ['', ['http://', !GetAtt [MyAppLoadBalancer, DNSName]]]   

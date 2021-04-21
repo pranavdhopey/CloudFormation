@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "This template will create Launch Configuration and Autoscaling group with Simple Scaling Policy.This Scaling Policy will add(ScaleOut) one instance when CPU Utilization is above 90% and remove(ScaleIn) one instance when CPU Utilization is below 70%. It will send SNS notification when scaling even occurs"
+Description: "This template will create Launch Configuration and Autoscaling group with Simple Scaling Policy. Autoscaling group will be attached to Application Load Balancer which we will be creating in this template. The Scaling Policy will add(ScaleOut) one instance when CPU Utilization is above 90% and remove(ScaleIn) one instance when CPU Utilization is below 70%. It will send SNS notification when scaling event occurs"
 
 Parameters:
   MyKeyName:
@@ -53,6 +53,7 @@ Metadata:
         Parameters:
           - VPCId  
           - MySubnetId
+          - ALBSecurityGroups
     ParameterLabels:
       VPCId:
         default: "In which VPC you are planning to create these instances"
@@ -70,6 +71,10 @@ Resources:
       DesiredCapacity: 1
       MaxSize: 3
       MinSize: 1
+      TargetGroupARNs:
+        - !Ref WebTargetGroup
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
       Tags: 
         - Key: Name
           Value: WebServer
@@ -82,8 +87,6 @@ Resources:
           - 'autoscaling:EC2_INSTANCE_TERMINATE_ERROR'
           - 'autoscaling:TEST_NOTIFICATION'
         TopicARN: !Ref MySNSTopic
-      TargetGroupARNs: 
-        - !Ref WebTargetGroup
 
   MyInstanceLC:
     Type: AWS::AutoScaling::LaunchConfiguration
@@ -113,7 +116,7 @@ Resources:
     Properties: 
       AdjustmentType: ChangeInCapacity
       AutoScalingGroupName: !Ref MyInstanceASG
-      Cooldown: "60"
+      Cooldown: "120"
       PolicyType: SimpleScaling
       ScalingAdjustment: 1
 
@@ -122,7 +125,7 @@ Resources:
     Properties: 
       AdjustmentType: ChangeInCapacity
       AutoScalingGroupName: !Ref MyInstanceASG
-      Cooldown: "60"
+      Cooldown: "120"
       PolicyType: SimpleScaling
       ScalingAdjustment: -1
       
