@@ -42,6 +42,7 @@ Resources:
         - !Ref MyELBSecurityGroup
       Subnets: !Ref MySubnetId
       CrossZone: true
+      LoadBalancerName: WebCLB
       Tags:
         - Key: Name
           Value: WebCLB
