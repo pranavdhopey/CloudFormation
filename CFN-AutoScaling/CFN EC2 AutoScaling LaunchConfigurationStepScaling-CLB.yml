@@ -25,6 +25,10 @@ Parameters:
   MyEC2SecurityGroups:
     Description: The list of SecurityGroupIds in your Virtual Private Cloud (VPC)
     Type: 'List<AWS::EC2::SecurityGroup::Id>'
+    
+  CLBSecurityGroups:
+    Description: SecurityGroupIds For Your CLB
+    Type: 'List<AWS::EC2::SecurityGroup::Id>'
 
   MySubnetId:
     Description: Select Subnet From The List.
@@ -44,6 +48,7 @@ Metadata:
           default: "AutoScalingGroup Configuration"          
         Parameters:
           - MySubnetId
+          - CLBSecurityGroups
     ParameterLabels:
       MySubnetId:
         default: "In which Subnets you are planning to create these instances?"
@@ -62,6 +67,10 @@ Resources:
       DesiredCapacity: 1
       MaxSize: 3
       MinSize: 1
+      LoadBalancerNames:
+        - !Ref MyClassicLoadBalancer
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
       Tags:
         - Key: Name
           Value: WebServer
@@ -166,7 +175,25 @@ Resources:
       Namespace: AWS/EC2
       Period: 300
       Statistic: Average
-      Threshold: 70          
+      Threshold: 70    
+
+  MyClassicLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      LoadBalancerName: dev-clb
+      Subnets: !Ref MySubnetId
+      Listeners:
+      - LoadBalancerPort: '80'
+        InstancePort: '80'
+        Protocol: HTTP
+      HealthCheck:
+        Target: HTTP:80/
+        HealthyThreshold: '3'
+        UnhealthyThreshold: '5'
+        Interval: '30'
+        Timeout: '5'
+      SecurityGroups: !Ref CLBSecurityGroups
+      CrossZone: true       
 
   MySNSTopic:
     Type: AWS::SNS::Topic
@@ -187,3 +214,6 @@ Outputs:
   LaunchConfig:
     Description: Name of LaunchConfiguration
     Value: !Ref MyInstanceLC
+  CLBURL:
+    Description: URL of the website
+    Value: !Join ['', ['http://', !GetAtt [MyClassicLoadBalancer, DNSName]]]  
